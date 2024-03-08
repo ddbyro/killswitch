@@ -1,12 +1,22 @@
+#!/usr/bin/env python3.5
+
 import requests
 import subprocess
 import os
 import signal
 import time
 import logging
-
+import yaml
 # Set up logging to a file with INFO level and a specific format
-logging.basicConfig(filename='transmission_health.log', level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='/var/log/transmission_health.log', level=logging.INFO, format='%(asctime)s %(message)s')
+
+# Load the configuration from the YAML file
+with open('/opt/vpn_health/config.yaml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
+
+# Get the region from the configuration. If it's not set, default to 'Utah'.
+VALID_REGION = config.get('VALID_REGION', 'Utah')
+
 
 def get_ip_info_json():
     """
@@ -106,16 +116,19 @@ def start_transmission():
     except subprocess.CalledProcessError:
         logging.info("Transmission service not found or not active after start")
 
-# TODO: Impliment limit on retries if vpn unhealthy
 
 def is_vpn_valid():
     """
-    Checks if the VPN is valid by checking the IP region. If the region is 'Utah', it's considered invalid.
+    Checks if the VPN is valid by checking the IP region. If the region is the same as VALID_REGION, it's considered valid.
     """
     ip_info_json = get_ip_info_json()
-    if ip_info_json is None or ip_info_json.json()['region'] == 'Utah':
+    if ip_info_json is None or ip_info_json.json()['region'] != VALID_REGION:
         return False
     return True
+
+
+# TODO: Impliment limit on retries if vpn unhealthy
+        
 
 # Main loop
 while True:
